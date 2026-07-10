@@ -1,3 +1,4 @@
+/** MCP docs dataset. */
 export const DOCS = {
   "tools": [
     {
