@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Link, NavLink } from 'react-router-dom'
 import './styles.css'
 import { initTheme, toggleTheme, getTheme } from './theme'
@@ -6,21 +6,52 @@ import { ChatDock } from './ChatDock'
 import { seedContext } from './seedContext'
 import { DOCS } from './data'
 
-const FEATURES = [{"t": "Tool catalog", "d": "Documented MCP tools with inputs/outputs."}, {"t": "Security model", "d": "Token handling, rate limits, least privilege."}, {"t": "Install paths", "d": "pip, Docker, Railway \u2014 copy-paste ready."}, {"t": "Agent chat", "d": "Ask how to wire search into an agent; answers cite the tool list."}, {"t": "HTTP bridge", "d": "Call the same capabilities outside MCP clients."}, {"t": "Portfolio-grade docs", "d": "Architecture diagram narrative recruiters skim in 60s."}] as { t: string; d: string }[]
-const INTEGRATIONS = [{"t": "Model Context Protocol", "d": "Tools for Claude, Cursor, and custom agents"}, {"t": "X API v2", "d": "Bearer-authenticated search & user lookup"}, {"t": "Railway / Docker", "d": "Deploy the Python server anywhere"}, {"t": "Supabase optional", "d": "Cache or log query metadata"}] as { t: string; d: string }[]
-const RECRUITER = ["AI tooling: MCP server design for external data", "API engineering: auth, rate limits, structured tools", "Python packaging + deploy (Docker/Railway)", "Developer experience: docs site + examples"] as string[]
-const QUICK = ["Interactive try-search playground with demo mode", "OpenAPI snippet generation", "Per-tool latency metrics panel", "Claude Desktop config generator"] as string[]
+const FEATURES = [
+  { t: 'Tool catalog', d: 'Documented MCP tools with inputs/outputs.' },
+  { t: 'Config generator', d: 'Claude Desktop MCP JSON you can copy.' },
+  { t: 'Security model', d: 'Token handling, rate limits, least privilege.' },
+  { t: 'Install paths', d: 'pip / Docker-style copy blocks.' },
+  { t: 'Demo playground', d: 'Sample search results without putting secrets in the browser.' },
+  { t: 'Agent chat', d: 'Ask how to wire search into an agent.' },
+]
+
+const TOOL_SCHEMA: Record<string, string> = {
+  x_search: 'input: { query: string, max_results?: number }\noutput: { posts: Post[] }',
+  x_user_lookup: 'input: { username: string }\noutput: { user: User }',
+  x_thread: 'input: { post_id: string }\noutput: { root: Post, replies: Post[] }',
+}
+
+const SAMPLE_RESULTS = [
+  { q: 'cloudflare pages deploy', hits: ['Thread on wrangler pages deploy flags', 'Tip: --branch main for production', 'CSP gotchas with inline theme scripts'] },
+  { q: 'mcp server tools', hits: ['How to register tools in Claude Desktop', 'Bearer tokens belong server-side', 'Rate limits per IP for public demos'] },
+]
 
 function ThemeToggle() {
   const [theme, setTheme] = useState(getTheme())
   return (
+    <button type="button" className="theme-toggle" aria-label="Toggle theme" onClick={() => setTheme(toggleTheme())}>
+      {theme === 'dark' ? 'Light' : 'Dark'}
+    </button>
+  )
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [ok, setOk] = useState(false)
+  return (
     <button
       type="button"
-      className="theme-toggle"
-      aria-label="Toggle light and dark mode"
-      onClick={() => setTheme(toggleTheme())}
+      className="btn btn-ghost"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text)
+          setOk(true)
+          setTimeout(() => setOk(false), 1500)
+        } catch {
+          /* ignore */
+        }
+      }}
     >
-      {theme === 'dark' ? 'Light' : 'Dark'}
+      {ok ? 'Copied' : 'Copy'}
     </button>
   )
 }
@@ -30,10 +61,14 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className={`shell${chatOpen ? ' shell--chat' : ''}`}>
       <header className="topbar">
-        <Link to="/" className="brand">X Search One</Link>
+        <Link to="/" className="brand">
+          X Search One
+        </Link>
         <nav className="nav" aria-label="Primary">
-          <NavLink to="/" end>Home</NavLink>
-          <NavLink to="/app">App</NavLink>
+          <NavLink to="/" end>
+            Home
+          </NavLink>
+          <NavLink to="/app">Tools</NavLink>
           <NavLink to="/features">Features</NavLink>
         </nav>
         <ThemeToggle />
@@ -42,10 +77,12 @@ function Shell({ children }: { children: React.ReactNode }) {
       <ChatDock open={chatOpen} onOpenChange={setChatOpen} context={seedContext()} product="x-search-one" />
       <footer className="footer">
         <p>
-          X Search One · public portfolio product ·{' '}
-          <a href="https://github.com/brianference/x-search-one" target="_blank" rel="noreferrer">GitHub</a>
+          MCP product face ·{' '}
+          <a href="https://github.com/brianference/x-search-one" target="_blank" rel="noreferrer">
+            GitHub
+          </a>
         </p>
-        <p className="fine">Built for real use and for hiring conversations — stack, constraints, and integrations included.</p>
+        <p className="fine">Bearer tokens never ship to the browser on this site.</p>
       </footer>
     </div>
   )
@@ -55,19 +92,17 @@ function Home() {
   return (
     <Shell>
       <section className="hero">
-        <p className="kicker">X Search One · MCP server for real-time X data</p>
+        <p className="kicker">X Search One · MCP for real-time X data</p>
         <h1>Production X/Twitter search for agents — MCP + HTTP.</h1>
-        <p className="lede">Public product hub for the X Search MCP server: install, tools, security model, and an assistant that explains agent integrations.</p>
+        <p className="lede">Install, inspect tools, generate Claude Desktop config, and try a safe demo playground.</p>
         <div className="cta-row">
-          <Link className="btn btn-primary" to="/app">Open the app</Link>
-          <Link className="btn btn-ghost" to="/features">See features</Link>
+          <Link className="btn btn-primary" to="/app">
+            Open tools
+          </Link>
+          <Link className="btn btn-ghost" to="/features">
+            Features
+          </Link>
         </div>
-        <ul className="hero-points">
-          <li>Light & dark mode</li>
-          <li>Grounded AI chat</li>
-          <li>No account required</li>
-          <li>Cloudflare Pages ready</li>
-        </ul>
       </section>
       <section className="grid-3">
         {FEATURES.slice(0, 3).map((f) => (
@@ -76,17 +111,6 @@ function Home() {
             <p>{f.d}</p>
           </article>
         ))}
-      </section>
-      <section className="panel">
-        <h2>Integrations</h2>
-        <div className="grid-2">
-          {INTEGRATIONS.map((i) => (
-            <div key={i.t} className="card card-slim">
-              <h3>{i.t}</h3>
-              <p>{i.d}</p>
-            </div>
-          ))}
-        </div>
       </section>
     </Shell>
   )
@@ -97,7 +121,6 @@ function FeaturesPage() {
     <Shell>
       <section className="panel">
         <h1>Features</h1>
-        <p className="lede">Product depth first — the same signals recruiters and technical founders look for.</p>
         <div className="grid-2">
           {FEATURES.map((f) => (
             <article key={f.t} className="card">
@@ -107,23 +130,99 @@ function FeaturesPage() {
           ))}
         </div>
       </section>
-      <section className="panel subtle">
-        <h2>Engineering signals</h2>
-        <ul className="check-list">
-          {RECRUITER.map((r) => (
-            <li key={r}>{r}</li>
-          ))}
-        </ul>
-      </section>
-      <section className="panel">
-        <h2>Quick wins next</h2>
-        <ul className="check-list">
-          {QUICK.map((q) => (
-            <li key={q}>{q}</li>
-          ))}
-        </ul>
-      </section>
     </Shell>
+  )
+}
+
+function ProductApp() {
+  const [openTool, setOpenTool] = useState<string | null>(null)
+  const [query, setQuery] = useState(SAMPLE_RESULTS[0].q)
+  const [hits, setHits] = useState<string[] | null>(null)
+  const mcpConfig = JSON.stringify(
+    {
+      mcpServers: {
+        'x-search': {
+          command: 'python',
+          args: ['-m', 'x_search_mcp'],
+          env: { X_BEARER_TOKEN: 'YOUR_TOKEN_SERVER_SIDE_ONLY' },
+        },
+      },
+    },
+    null,
+    2,
+  )
+
+  function runDemo() {
+    const found = SAMPLE_RESULTS.find((s) => s.q === query) || SAMPLE_RESULTS[0]
+    setHits(found.hits)
+  }
+
+  return (
+    <section className="panel">
+      <h1>Install · Tools · Secure</h1>
+      <p className="lede">Three-rail mental model for agent tooling. Demo playground uses sample data only.</p>
+
+      <h2>Install</h2>
+      {DOCS.install.map((line) => (
+        <div key={line} className="copy-row" style={{ marginBottom: 8 }}>
+          <pre className="code-block">{line}</pre>
+          <CopyButton text={line} />
+        </div>
+      ))}
+
+      <h2>Claude Desktop config</h2>
+      <div className="copy-row">
+        <pre className="code-block">{mcpConfig}</pre>
+        <CopyButton text={mcpConfig} />
+      </div>
+
+      <h2>Tools</h2>
+      <div className="grid-2">
+        {DOCS.tools.map((t) => (
+          <article key={t.name} className="card">
+            <h3>
+              <code>{t.name}</code>
+            </h3>
+            <p>{t.desc}</p>
+            <button type="button" className="btn btn-ghost" onClick={() => setOpenTool(openTool === t.name ? null : t.name)}>
+              {openTool === t.name ? 'Hide schema' : 'Show schema'}
+            </button>
+            {openTool === t.name && <div className="schema">{TOOL_SCHEMA[t.name] || 'schema TBD'}</div>}
+          </article>
+        ))}
+      </div>
+
+      <h2>Secure</h2>
+      <div className="card">
+        <ul className="check-list">
+          <li>X bearer stays in server / MCP process env — never in client JS</li>
+          <li>Rate-limit public demos per IP</li>
+          <li>Least privilege: search tools only, no account mutation</li>
+        </ul>
+      </div>
+
+      <h2>Demo playground</h2>
+      <div className="filters">
+        <select value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Sample query">
+          {SAMPLE_RESULTS.map((s) => (
+            <option key={s.q} value={s.q}>
+              {s.q}
+            </option>
+          ))}
+        </select>
+        <button type="button" className="btn btn-primary" onClick={runDemo}>
+          Run sample search
+        </button>
+      </div>
+      {hits && (
+        <ul className="check-list">
+          {hits.map((h) => (
+            <li key={h}>{h}</li>
+          ))}
+        </ul>
+      )}
+      <p className="meta">Sample results only — wire live X API on the MCP server with a server-side token.</p>
+    </section>
   )
 }
 
@@ -134,27 +233,6 @@ function AppPage() {
     </Shell>
   )
 }
-
-
-function ProductApp() {
-  return (
-    <section className="panel">
-      <h1>MCP tool catalog</h1>
-      <p className="lede">Product hub for the Python MCP server. Source: <a href="https://github.com/brianference/x-search-mcp-server" target="_blank" rel="noreferrer">x-search-mcp-server</a></p>
-      <div className="grid-2">
-        {DOCS.tools.map((t) => (
-          <article key={t.name} className="card">
-            <h3><code>{t.name}</code></h3>
-            <p>{t.desc}</p>
-          </article>
-        ))}
-      </div>
-      <h2>Install</h2>
-      <pre className="code-block">{DOCS.install.join('\n')}</pre>
-    </section>
-  )
-}
-
 
 export default function App() {
   useEffect(() => {
